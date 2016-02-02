@@ -1,0 +1,33 @@
+{
+    "swagger": "2.0",
+    "info": {
+        "title": "Customer.io API",
+        "description": "The API for Customer.io",
+        "termsOfService": "https://customer.io/terms-of-service.html",
+        "version": "v1"
+    },
+    "host": "track.customer.io",
+    "basePath": "/api/{version}",
+    "schemes": [
+        "https"
+    ],
+    "produces": [
+        "application/json"
+    ],
+    "consumes": [
+        "application/json"
+    ],
+    "definitions": [
+    ],
+    "paths": {
+        "/customers/{customer_id}": {
+            "put": {
+                "summary": "Create a contact given id.",
+                "operationId": "addCustomer",
+                "responses": [
+
+                ]
+            }
+        }
+    }
+}

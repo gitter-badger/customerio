@@ -2,168 +2,75 @@
 
 namespace Customerio;
 
-use Customerio\Exception\CustomerioException;
-use GuzzleHttp\Client as HttpClient;
-use GuzzleHttp\Collection;
-use GuzzleHttp\Command\Event\ProcessEvent;
-use GuzzleHttp\Command\Guzzle\Description;
-use GuzzleHttp\Command\Guzzle\GuzzleClient;
-use GuzzleHttp\Event\CompleteEvent;
-use GuzzleHttp\Exception\ParseException;
-use GuzzleHttp\Message\Response;
-use GuzzleHttp\Subscriber\Retry\RetrySubscriber;
+use Customerio\API\Normalizer\NormalizerFactory;
+use Customerio\API\Resource\DefaultResource;
+use Http\Client\HttpClient;
+use Http\Discovery\HttpClientDiscovery;
+use Http\Discovery\MessageFactoryDiscovery;
+use Http\Message\MessageFactory;
+use Symfony\Component\Serializer\Encoder\JsonDecode;
+use Symfony\Component\Serializer\Encoder\JsonEncode;
+use Symfony\Component\Serializer\Encoder\JsonEncoder;
+use Symfony\Component\Serializer\Serializer;
 
-/**
- * Client used to interact with **Customer.io RESTful API**
- *
- * @method array addCustomer(array $config = [])
- * @method array updateCustomer(array $config = [])
- * @method array deleteCustomer(array $config = [])
- * @method array addEvent(array $config = [])
- * @method array anonymousEvent(array $config = [])
- * @method array pageView(array $config = [])
- */
-class Client extends GuzzleClient
+class Client
 {
     /**
-     * @param array $config
+     * @var HttpClient
      */
-    public function __construct(array $config = [])
-    {
-        $defaultConfig = [
-            'max_retries' => 3,
-            'description_path' => __DIR__ . '/services/description.php'
-        ];
+    private $httpClient;
 
-        // Apply some defaults.
-        $config = Collection::fromConfig(
-            $config,
-            $defaultConfig,
-            ['api_key', 'site_id']
-        );
+    /**
+     * @var Serializer
+     */
+    private $serializer;
 
-        // Create the client.
-        $this->handleHttpClientOptions($config);
-        $this->handleDescriptionOptions($config);
+    /**
+     * @var MessageFactory
+     */
+    private $messageFactory;
 
-        parent::__construct(
-            $config['http_client'],
-            $config['description'],
-            $config->toArray()
-        );
+    /**
+     * @param HttpClient|null $httpClient
+     * @param Serializer|null $serializer
+     * @param MessageFactory|null $messageFactory
+     */
+    protected function __construct(
+        HttpClient $httpClient = null,
+        Serializer $serializer = null,
+        MessageFactory $messageFactory = null
+    ) {
+        $this->httpClient = $httpClient ?: HttpClientDiscovery::find();
+        $this->messageFactory = $messageFactory ?: MessageFactoryDiscovery::find();
 
-        $this->handleErrors();
+        if ($serializer === null) {
+            $serializer = new Serializer(
+                NormalizerFactory::create(),
+                [
+                    new JsonEncoder(
+                        new JsonEncode(),
+                        new JsonDecode()
+                    )
+                ]
+            );
+        }
 
-        // Ensure that the credentials are set.
-        $this->handleCredentialsOptions($config);
-
-        // Ensure that ApiVersion is set.
-        $this->setConfig('defaults/ApiVersion', $this->getDescription()->getApiVersion());
+        $this->serializer = $serializer;
     }
 
     /**
-     * @param Collection $config
+     * @param HttpClient|null $httpClient
+     * @param Serializer|null $serializer
+     * @param MessageFactory|null $messageFactory
+     * @return DefaultResource
      */
-    private function handleHttpClientOptions(Collection $config)
-    {
-        if ($config['http_client']) {
-            // HTTP client was injected
-            return;
-        }
-        $client = new HttpClient($config['http_client_options'] ?: []);
+    public static function factory(
+        HttpClient $httpClient = null,
+        Serializer $serializer = null,
+        MessageFactory $messageFactory = null
+    ) {
+        $client = new self($httpClient, $serializer, $messageFactory);
 
-        // Attach request retry logic
-        $client->getEmitter()->attach(new RetrySubscriber([
-            'max' => $config['max_retries'],
-            'filter' => RetrySubscriber::createChainFilter([
-                RetrySubscriber::createStatusFilter(),
-                RetrySubscriber::createCurlFilter(),
-            ]),
-        ]));
-        $config['http_client'] = $client;
-    }
-
-    /**
-     * @param Collection $config
-     *
-     * @throws \InvalidArgumentException
-     */
-    private function handleDescriptionOptions(Collection $config)
-    {
-        if ($config['description']) {
-            // Service description was injected
-            return;
-        }
-        // Load service description data
-        $path = $config['description_path'];
-        /** @noinspection PhpIncludeInspection */
-        $data = file_exists($path) ? include $path : null;
-        if (!is_array($data)) {
-            throw new \InvalidArgumentException('Invalid description');
-        }
-        $config['description'] = new Description($data);
-    }
-
-    /**
-     * @param Collection $config
-     */
-    private function handleCredentialsOptions(Collection $config)
-    {
-        if (!$this->getHttpClient()->getDefaultOption('auth')) {
-            $this->getHttpClient()->setDefaultOption('auth', [
-                $config['site_id'],
-                $config['api_key'],
-            ]);
-        }
-    }
-
-    /**
-     * Overrides the error handling in Guzzle so that when errors are encountered we throw
-     * Customerio errors, not Guzzle ones.
-     *
-     */
-    private function handleErrors()
-    {
-        $this->getHttpClient()->getEmitter()->on('complete', function (CompleteEvent $e) {
-            if (!$e->getResponse()) {
-                return;
-            }
-
-            if (!$e->getResponse()->getBody()->getSize()) {
-                return;
-            }
-
-            try {
-                $e->getResponse()->json();
-            } catch (ParseException $exception) {
-                //JSON is invalid - mock 502 response
-                $response = $exception->getResponse();
-                $response->setStatusCode(502);
-                $response->setReasonPhrase($exception->getMessage());
-                throw new ParseException($exception->getMessage(), $response);
-            }
-        });
-
-        $emitter = $this->getEmitter();
-        $emitter->on('process', function (ProcessEvent $e) {
-            if (!$e->getException()) {
-                return;
-            }
-
-            // Stop other events from firing when you override 401 responses
-            $e->stopPropagation();
-
-            if (!$e->getResponse()) {
-                $response = new Response(502, [], null);
-                $response->setReasonPhrase($e->getException()->getMessage());
-                $e = CustomerioException::factory($e->getRequest(), $response, $e);
-                throw $e;
-            }
-
-            if ($e->getResponse()->getStatusCode() >= 400 && $e->getResponse()->getStatusCode() < 600) {
-                $e = CustomerioException::factory($e->getRequest(), $e->getResponse(), $e);
-                throw $e;
-            }
-        });
+        return new DefaultResource($client->httpClient, $client->messageFactory, $client->serializer);
     }
 }

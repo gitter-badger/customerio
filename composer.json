@@ -12,24 +12,28 @@
             "homepage": "https://github.com/krzaczek"
         }
     ],
-    "minimum-stability": "stable",
+    "minimum-stability": "beta",
+    "prefer-stable": true,
     "require": {
         "php": ">=5.4",
-        "guzzlehttp/guzzle": "~5.3",
-        "guzzlehttp/guzzle-services": "~0.5",
-        "guzzlehttp/retry-subscriber": "~2.0.0",
-        "guzzlehttp/log-subscriber": "~1.0.0"
+        "jane/open-api": "^1.0",
+        "php-http/client-implementation": "^1.0",
+        "psr/http-message-implementation": "^1.0",
+        "php-http/discovery": "^0.7"
     },
     "conflict": {
         "userscape/customerio": "*"
     },
     "require-dev": {
-        "phpunit/phpunit": "~4.7",
-        "codeclimate/php-test-reporter": "dev-master"
+        "phpunit/phpunit": "~4.8",
+        "fabpot/php-cs-fixer": "^2.0@dev",
+        "php-http/guzzle6-adapter": "^1.0",
+        "php-http/message": "^1.0"
     },
     "autoload": {
         "psr-4": {
-            "Customerio\\": "src/"
+            "Customerio\\": "src/",
+            "Customerio\\API\\": "generated/"
         }
     },
     "autoload-dev": {

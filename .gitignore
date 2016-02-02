@@ -6,3 +6,4 @@ composer.lock
 test.php
 *.phar
 /build/
+.php_cs.cache

@@ -54,11 +54,11 @@ class CustomerioException extends CommandException
 
         $message = $label . PHP_EOL . implode(
             PHP_EOL,
-            array(
+            [
                 '[status code] ' . $response->getStatusCode(),
                 '[reason phrase] ' . $response->getReasonPhrase(),
                 '[url] ' . $request->getUrl(),
-            )
+            ]
         );
 
         /** @var CustomerioException $exception */
@@ -67,17 +67,17 @@ class CustomerioException extends CommandException
         // Sets the errors if the error response is the standard Customer.io error type
         if (static::isValidError($responseJson)) {
             $exception->setErrors([
-                array(
+                [
                     'code' => $statusCode,
                     'message' => $responseJson['meta']['error']
-                )
+                ]
             ]);
         } elseif ($unavailableError != null) {
             $exception->setErrors([
-                array(
+                [
                     'code' => 'service_unavailable',
                     'message' => $unavailableError
-                )
+                ]
             ]);
         }
 
