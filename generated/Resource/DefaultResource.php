@@ -10,15 +10,17 @@ class DefaultResource extends Resource
     /**
      *
      *
+     * @param string $id Customer id
      * @param array  $parameters List of parameters
      * @param string $fetch      Fetch mode (object or response)
      *
      * @return \Psr\Http\Message\ResponseInterface
      */
-    public function addCustomer($parameters = [], $fetch = self::FETCH_OBJECT)
+    public function addCustomer($id, $parameters = [], $fetch = self::FETCH_OBJECT)
     {
         $queryParam = new QueryParam();
-        $url = '/api/{version}/customers/{customer_id}';
+        $url = '/api/v1/customers/{id}';
+        $url = str_replace('{id}', urlencode($id), $url);
         $url = $url . ('?' . $queryParam->buildQueryString($parameters));
         $headers = array_merge(['Host' => 'track.customer.io'], $queryParam->buildHeaders($parameters));
         $body = $queryParam->buildFormDataString($parameters);

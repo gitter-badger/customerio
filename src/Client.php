@@ -3,10 +3,7 @@
 namespace Customerio;
 
 use Customerio\API\Normalizer\NormalizerFactory;
-use Customerio\API\Resource\DefaultResource;
 use Http\Client\HttpClient;
-use Http\Discovery\HttpClientDiscovery;
-use Http\Discovery\MessageFactoryDiscovery;
 use Http\Message\MessageFactory;
 use Symfony\Component\Serializer\Encoder\JsonDecode;
 use Symfony\Component\Serializer\Encoder\JsonEncode;
@@ -36,12 +33,13 @@ class Client
      * @param MessageFactory|null $messageFactory
      */
     protected function __construct(
-        HttpClient $httpClient = null,
-        Serializer $serializer = null,
-        MessageFactory $messageFactory = null
+        HttpClient $httpClient,
+        MessageFactory $messageFactory,
+        Serializer $serializer = null
+
     ) {
-        $this->httpClient = $httpClient ?: HttpClientDiscovery::find();
-        $this->messageFactory = $messageFactory ?: MessageFactoryDiscovery::find();
+        $this->httpClient = $httpClient;
+        $this->messageFactory = $messageFactory;
 
         if ($serializer === null) {
             $serializer = new Serializer(
@@ -59,17 +57,11 @@ class Client
     }
 
     /**
-     * @param HttpClient|null $httpClient
-     * @param Serializer|null $serializer
-     * @param MessageFactory|null $messageFactory
-     * @return DefaultResource
+     * @param array $config
      */
-    public static function factory(
-        HttpClient $httpClient = null,
-        Serializer $serializer = null,
-        MessageFactory $messageFactory = null
-    ) {
-        $client = new self($httpClient, $serializer, $messageFactory);
+    public static function factory(array $config = [])
+    {
+
 
         return new DefaultResource($client->httpClient, $client->messageFactory, $client->serializer);
     }

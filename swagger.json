@@ -7,7 +7,7 @@
         "version": "v1"
     },
     "host": "track.customer.io",
-    "basePath": "/api/{version}",
+    "basePath": "/api/v1",
     "schemes": [
         "https"
     ],
@@ -20,12 +20,21 @@
     "definitions": [
     ],
     "paths": {
-        "/customers/{customer_id}": {
+        "/customers/{id}": {
             "put": {
                 "summary": "Create a contact given id.",
                 "operationId": "addCustomer",
                 "responses": [
 
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "description": "Customer id",
+                        "type": "string"
+                    }
                 ]
             }
         }

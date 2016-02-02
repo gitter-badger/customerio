@@ -7,3 +7,5 @@ test.php
 *.phar
 /build/
 .php_cs.cache
+.puli
+puli.json
